@@ -20,6 +20,8 @@ return new class extends Migration
             $table->decimal('sub_total', 12, 2)->default(0); //
             $table->decimal('discount', 12, 2)->default(0); //
             $table->decimal('grand_total', 12, 2)->default(0); //
+            $table->decimal('amount_paid', 12, 2)->default(0); //
+            $table->string('ref_no')->nullable();
             $table->enum('status', ['unpaid', 'partial', 'paid'])->default('unpaid'); //
             $table->text('notes')->nullable(); //
             // $table->foreignId('created_by')->nullable()->constrained('users'); //

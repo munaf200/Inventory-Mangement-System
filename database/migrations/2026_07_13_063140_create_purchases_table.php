@@ -18,6 +18,8 @@ return new class extends Migration
             $table->date('purchase_date');
             $table->decimal('lot_price', 12, 2)->default(0); // total amount agreed with supplier
             $table->decimal('amount_paid', 12, 2)->default(0);
+            $table->decimal('total_lot_item_quantity', 12, 2)->default(0);
+            $table->decimal('balance_amount', 12, 2)->default(0);
             $table->text('notes')->nullable();
             // $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

@@ -17,6 +17,7 @@ use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use UnitEnum;
 
 class ReportsAndAnalytics extends Page implements HasForms
 {
@@ -25,7 +26,9 @@ class ReportsAndAnalytics extends Page implements HasForms
 
     // protected string $navigationIcon = 'heroicon-o-chart-bar';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
-    protected static ?int $navigationSort= 5;
+    protected static string|UnitEnum|null $navigationGroup = 'Sales & Inventory';
+
+    protected static ?int $navigationSort= 3;
 
     public ?array $filterData = [];
 

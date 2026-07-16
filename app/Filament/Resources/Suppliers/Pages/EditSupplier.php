@@ -20,4 +20,20 @@ class EditSupplier extends EditRecord
             RestoreAction::make(),
         ];
     }
+     protected function getFormActions(): array
+    {
+        $isEditing = $this->data['is_editing'] ?? false;
+
+        if (! $isEditing) {
+            return [];
+        }
+
+        return parent::getFormActions();
+    }
+
+    // Save hone ke baad wapas normal mode me lane ke liye
+    protected function afterSave(): void
+    {
+        $this->data['is_editing'] = false;
+    }
 }

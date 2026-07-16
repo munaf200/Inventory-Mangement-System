@@ -15,12 +15,17 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class InvoiceResource extends Resource
 {
     protected static ?string $model = Invoice::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::DocumentText;
+    protected static string|UnitEnum|null $navigationGroup = 'Sales & Inventory';
+    protected static ?int $navigationSort= 1;
+    
+
     
 
     public static function form(Schema $schema): Schema

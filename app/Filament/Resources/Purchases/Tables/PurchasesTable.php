@@ -31,7 +31,7 @@ class PurchasesTable
                     ->date('d-M-Y')
                     ->sortable(),
                     
-                TextColumn::make('lotItems_count') // Kitne items aye is lot mein
+                TextColumn::make('total_lot_item_quantity') // Kitne items aye is lot mein
                     ->counts('lotItems')
                     ->label('Total Items')
                     ->badge(),

@@ -18,12 +18,18 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use UnitEnum;
 
 class SupplierResource extends Resource
 {
     protected static ?string $model = Supplier::class;
 
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BuildingStorefront;
+    protected static string|UnitEnum|null $navigationGroup = 'Business Relations';
+    protected static ?int $navigationSort= 5;
+
+
 
     public static function form(Schema $schema): Schema
     {

@@ -41,11 +41,20 @@ class PurchasesRelationManager extends RelationManager
                     ->date('d-M-Y')
                     ->sortable(),
                 TextColumn::make('lot_number')
-                    ->label('Lot / Bill #')
+                    ->label('Lot #')
                     ->searchable()
                     ->weight('bold'),
                 TextColumn::make('lot_price')
-                    ->label('Lot Amount')
+                    ->label('Lot Price')
+                    ->money('PKR')
+                    ->sortable(),
+
+                     TextColumn::make('amount_paid')
+                    ->label('Amount Paid')
+                    ->money('PKR')
+                    ->sortable(),
+                     TextColumn::make('balance_amount')
+                    ->label('Balance')
                     ->money('PKR')
                     ->sortable(),
             ])

@@ -2,13 +2,16 @@
 
 namespace App\Filament\Resources\Purchases\Schemas;
 
+use App\Models\Purchase;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
@@ -19,74 +22,95 @@ class PurchaseForm
         return $schema
             ->components([
                 Section::make('Lot Details')
-                    ->description('Supplier aur bill ki bunyadi malomat')
+                    ->description('basic information of the supplier')
                     ->schema([
                         TextInput::make('lot_number')
-                            ->label('Lot / Bill Number')
-                            ->required()
-                            ->unique(ignoreRecord: true)
-                            ->columnSpan(1),
-                            
+                            ->label('Lot Number')
+                            ->default(function () {
+                                $lastRecord = Purchase::latest()->first();
+                                $nextId = $lastRecord ? $lastRecord->id + 1 : 1;
+
+                                return 'LOT-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+                            })
+                            ->readOnly() 
+                            ->dehydrated() 
+                            ->required(),
+
                         Select::make('supplier_id')
                             ->relationship('supplier', 'name')
-                            ->label('Supplier (Factory)')
+                            ->label('Supplier')
                             ->searchable()
                             ->preload()
                             ->required()
                             ->columnSpan(1),
-                            
+
                         DatePicker::make('purchase_date')
                             ->default(now())
                             ->required()
                             ->columnSpan(1),
 
-                        TextInput::make('lot_price')
-                            ->label('Total Lot Price (Bill Amount)')
-                            ->numeric()
-                            ->required()
-                            ->prefix('Rs.')
-                            ->columnSpan(1),
+
 
                         Textarea::make('notes')
                             ->label('Extra Notes')
                             ->columnSpanFull(),
-                    ])->columns(4)->columnSpanFull(),
+                    ])->columns(3)->columnSpanFull(),
 
                 // 👕 SECTION 2: Lot ke andar aane wale items (Repeater)
-                Section::make('Lot Items (Maal ki tafseel)')
+                Section::make('Lot Items')
                     ->schema([
-                        Repeater::make('lotItems') // Yeh relationship function ka naam hai model mein
+                        Repeater::make('lotItems') 
                             ->relationship()
+                            ->live() 
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                $items = $get('lotItems') ?? [];
+                                
+                                // Har item ki 'qty_purchased' ko jama (sum) karega
+                                $totalQuantity = collect($items)->sum(function ($item) {
+                                    return intval($item['qty_purchased'] ?? 0);
+                                });
+                                
+                                $set('total_lot_item_quantity', $totalQuantity);
+                            })
                             ->schema([
                                 TextInput::make('item')
                                     ->label('Item Name')
                                     ->required()
                                     ->columnSpan(2),
-                                    
+
                                 TextInput::make('brand')
                                     ->label('Brand')
                                     ->columnSpan(1),
-                                    
+
                                 TextInput::make('qty_purchased')
                                     ->label('Qty')
                                     ->numeric()
                                     ->required()
                                     ->live(onBlur: true)
-                                    // Jaise hi Qty Purchased likhi jaye, Qty Available bhi same ho jaye
-                                    ->afterStateUpdated(fn ($state, Set $set) => $set('qty_available', $state))
-                                    ->columnSpan(1),
-                                    
-                                Hidden::make('qty_available'), // User ko dikhane ki zaroorat nahi
+                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                 
+                                        $set('qty_available', $state);
+                                        
+                                        $items = $get('../../lotItems') ?? [];
+                                        $totalQuantity = collect($items)->sum(function ($item) {
+                                            return intval($item['qty_purchased'] ?? 0);
+                                        });
+                                        
+                                        $set('../../total_lot_item_quantity', $totalQuantity);
+                                    })
+                                    ->columnSpan(1),
+
+                                Hidden::make('qty_available'), // User ko dikhane ki zaroorat nahi
+
                                 TextInput::make('cost_price')
-                                    ->label('Cost Price (Kharid)')
+                                    ->label('Cost Price')
                                     ->numeric()
                                     ->required()
                                     ->prefix('Rs.')
                                     ->columnSpan(1),
-                                    
+
                                 TextInput::make('retail_price')
-                                    ->label('Retail Price (Baich)')
+                                    ->label('Retail Price')
                                     ->numeric()
                                     ->required()
                                     ->prefix('Rs.')
@@ -96,6 +120,60 @@ class PurchaseForm
                             ->defaultItems(1)
                             ->addActionLabel('Add New Item')
                     ])->columnSpanFull(),
+
+                Section::make('Payment & Summary')
+                    ->description('View and manage the supplier payment and lot summary here.')
+                    ->columns(4) // Pure card ko 3 barabar columns me divide karega
+                    ->schema([
+
+                        TextInput::make('total_lot_item_quantity') // Placeholder ko hata kar TextInput kar diya
+                            ->label('Total Lot Items Quantity')
+                            ->numeric() // Ab user isko khud bhi edit kar sakta hai aur ye DB me save hoga
+                            ->default(0),
+
+                        TextInput::make('lot_price') // Apni field ka original name check karlein (e.g. total_lot_price)
+                            ->label('Lot Price')
+                            ->numeric()
+                            ->live(onBlur: true) // Jaise hi user input se bahar click kare, calculation chalay
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                $total = floatval($get('lot_price') ?? 0);
+                                $paid = floatval($get('amount_paid') ?? 0);
+
+                                $set('balance_amount', $total - $paid);
+                            }),
+                        TextInput::make('amount_paid')
+                            ->label('Paid Amount')
+                            ->numeric()
+                            ->prefix('Rs.')
+                            ->default(0)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                $total = floatval($get('lot_price') ?? 0);
+                                $paid = floatval($get('amount_paid') ?? 0);
+
+                                // Remaining Balance ko real-time update karega
+                                $set('balance_amount', $total - $paid);
+                            }),
+
+                        // FIELD 3: Remaining Balance (Auto-calculated aur Read-only)
+                        TextInput::make('balance_amount')
+                            ->label('Remaining Balance')
+                            ->numeric()
+                            ->prefix('Rs.')
+                            ->readonly()
+                            ->disabled()
+                            ->dehydrated() // Database mein value save karwane ke liye
+                            ->extraAttributes(function (Get $get) {
+                                // Agar udhaar baki hai to text RED ho jaye, warna GREEN
+                                $total = floatval($get('total_lot_price') ?? 0);
+                                $paid = floatval($get('amount_paid') ?? 0);
+                                $isDue = ($total - $paid) > 0;
+
+                                return [
+                                    'style' => $isDue ? 'color: #ef4444; font-weight: bold;' : 'color: #22c55e; font-weight: bold;'
+                                ];
+                            }),
+                    ])->columnSpanFull()
             ]);
     }
 }

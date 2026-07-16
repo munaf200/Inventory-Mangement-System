@@ -24,4 +24,11 @@ class Customer extends Model
     public function ledgers() {
         return $this->hasMany(CustomerLedger::class); //
     }
+    protected static function booted()
+    {
+        static::creating(function ($customer) {
+            // Naye customer ka shuruati current_balance wahi hoga jo opening_balance hai
+            $customer->current_balance = $customer->opening_balance ?? 0;
+        });
+    }
 }
