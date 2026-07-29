@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Invoice;
+use Carbon\Carbon;
 use Filament\Widgets\Widget;
 use Livewire\Attributes\On;
 
@@ -39,7 +40,8 @@ class ReceivablesAgingWidget extends Widget
         $dangerItems = [];
 
         foreach ($invoices as $invoice) {
-            $daysOld = now()->diffInDays($invoice->invoice_date);
+            // $daysOld = now()->diffInDays($invoice->invoice_date);
+            $daysOld = (int) abs(now()->startOfDay()->diffInDays(Carbon::parse($invoice->invoice_date)->startOfDay()));
             $pendingAmount = $invoice->grand_total;
 
             // Customer name nikalne ke liye multiple safe fallbacks lagaye hain

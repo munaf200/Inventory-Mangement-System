@@ -15,6 +15,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 // use Filament\TextColumn;
+// use Filament\TextColumn;
 use Filament\Tables\Table;
 
 class LedgersRelationManager extends RelationManager
@@ -36,45 +37,66 @@ class LedgersRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('description')
             ->columns([
-               TextColumn::make('transaction_date')
+                TextColumn::make('transaction_date')
                     ->label('Date')
                     ->date('d-M-Y')
                     ->sortable(),
+                TextColumn::make('voucher_no') // Changed from receipt_number to voucher_no
+                    ->label('Voucher #')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->copyable(),
+
                 TextColumn::make('description')
                     ->label('Description')
-                    ->wrap(),
+                    ->searchable(),
+
                 TextColumn::make('type')
                     ->label('Type')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'opening_balance' => 'warning',
-                        'invoice' => 'danger', // Bill bana toh udhaar barha (Debit)
-                        'payment' => 'success', // Paise aaye toh udhaar kam hua (Credit)
+                    ->color(fn(string $state): string => match ($state) {
+                        'opening_balance' => 'gray',
+                        'invoice'         => 'danger',  // Red: Bill / Udhaar Barha
+                        'payment'         => 'success', // Green: Wasooli / Udhaar Kam Hua
+                        default           => 'info',
+                    })
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'opening_balance' => 'Opening Bal',
+                        'invoice'         => 'Invoice',
+                        'payment'         => 'Payment Recv',
+                        default           => ucfirst($state),
                     }),
+
                 TextColumn::make('debit')
-                    ->label('Debit (Humne Lene Hain)')
+                    ->label('Debit')
                     ->money('PKR')
-                    ->color('danger'),
+                    ->color('danger')
+                    ->sortable(),
+
                 TextColumn::make('credit')
-                    ->label('Credit (Humein Mil Chuke)')
+                    ->label('Credit')
                     ->money('PKR')
-                    ->color('success'),
+                    ->color('success')
+                    ->sortable(),
+
                 TextColumn::make('balance')
                     ->label('Running Balance')
                     ->money('PKR')
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->sortable(),
             ])
+            ->defaultSort('transaction_date', 'asc')
             ->filters([
                 //
             ])
             ->headerActions([
-                CreateAction::make(),
-                AssociateAction::make(),
+                // CreateAction::make(),
+                // AssociateAction::make(),
             ])
             ->recordActions([
-                EditAction::make(),
-                DissociateAction::make(),
-                DeleteAction::make(),
+                // EditAction::make(),
+                // DissociateAction::make(),
+                // DeleteAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

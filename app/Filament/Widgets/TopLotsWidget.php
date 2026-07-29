@@ -44,30 +44,35 @@ class TopLotsWidget extends ChartWidget
      */
     protected function getData(): array
     {
-        $fromDate = $this->filters['from_date'] ?? now()->subDays(30)->format('Y-m-d');
+       $fromDate = $this->filters['from_date'] ?? now()->subDays(30)->format('Y-m-d');
         $toDate = $this->filters['to_date'] ?? now()->format('Y-m-d');
         $lotId = $this->filters['purchase_lot_id'] ?? 'all';
+
+        // FIX 1: Date Range me poora din (Start & End Time) include kia
+        $start = $fromDate . ' 00:00:00';
+        $end = $toDate . ' 23:59:59';
 
         $labels = [];
         $profitData = [];
 
         if ($lotId !== 'all') {
             // ==========================================
-            // CASE 1: AGAR SPECIFIC LOT SELECT HAI (SHOW ITEMS)
+            // CASE 1: SPECIFIC LOT SELECTED (SHOW ITEMS)
             // ==========================================
             $itemsQuery = DB::table('lot_items')
                 ->join('invoice_items', 'invoice_items.lot_item_id', '=', 'lot_items.id')
                 ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+                ->whereNull('invoices.deleted_at')   // FIX 2: Soft deleted invoices ko ignore karna
+                ->whereNull('lot_items.deleted_at')  // Soft deleted items ko ignore karna
                 ->where('lot_items.purchase_id', $lotId)
-                ->whereBetween('invoices.invoice_date', [$fromDate, $toDate])
+                ->whereBetween('invoices.invoice_date', [$start, $end])
                 ->select(
                     'lot_items.id',
-                    // NOTE: Agar aapke lot_items table mein column ka naam "item_name" ya "product_name" hai, 
-                    // to niche "lot_items.name" ko us se badal dijiyega.
                     'lot_items.item as item_label', 
                     DB::raw('SUM(invoice_items.qty * invoice_items.rate) - SUM(invoice_items.qty * lot_items.cost_price) as profit_generated')
                 )
                 ->groupBy('lot_items.id', 'lot_items.item')
+                ->having('profit_generated', '>', 0) // FIX 3: Pie Chart ke liye sirf positive profit wale items
                 ->orderBy('profit_generated', 'desc')
                 ->limit(5)
                 ->get();
@@ -77,7 +82,7 @@ class TopLotsWidget extends ChartWidget
 
         } else {
             // ==========================================
-            // CASE 2: AGAR "ALL LOTS" SELECT HAI (SHOW LOTS)
+            // CASE 2: "ALL LOTS" SELECTED (SHOW LOTS)
             // ==========================================
             $lotsQuery = Purchase::query()
                 ->select('purchases.id', 'purchases.lot_number', DB::raw('
@@ -86,8 +91,12 @@ class TopLotsWidget extends ChartWidget
                 ->join('lot_items', 'lot_items.purchase_id', '=', 'purchases.id')
                 ->join('invoice_items', 'invoice_items.lot_item_id', '=', 'lot_items.id')
                 ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
-                ->whereBetween('invoices.invoice_date', [$fromDate, $toDate])
+                ->whereNull('invoices.deleted_at')   // FIX 2: Soft deleted records ignore
+                ->whereNull('lot_items.deleted_at')
+                ->whereNull('purchases.deleted_at')
+                ->whereBetween('invoices.invoice_date', [$start, $end])
                 ->groupBy('purchases.id', 'purchases.lot_number')
+                ->having('profit_generated', '>', 0) // FIX 3: Positive Profit Filter
                 ->orderBy('profit_generated', 'desc')
                 ->limit(5)
                 ->get();

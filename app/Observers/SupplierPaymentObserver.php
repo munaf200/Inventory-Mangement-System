@@ -2,8 +2,10 @@
 
 namespace App\Observers;
 
+use App\Models\Supplier;
 use App\Models\SupplierLedger;
 use App\Models\SupplierPayment;
+use Illuminate\Support\Facades\DB;
 
 class SupplierPaymentObserver
 {
@@ -12,27 +14,29 @@ class SupplierPaymentObserver
      */
     public function created(SupplierPayment $payment): void
     {
-        $lastLedger = SupplierLedger::where('supplier_id', $payment->supplier_id)
-            ->latest('id')
-            ->first();
+      DB::transaction(function () use ($payment) {
+            $supplier = Supplier::findOrFail($payment->supplier_id);
+            
+            // Calculate new balance: Old Balance - Debit (Payment)
+            $newBalance = $supplier->current_balance - $payment->amount_paid;
 
-        $previousBalance = $lastLedger ? $lastLedger->balance : $payment->supplier->opening_balance;
+            // 1. Insert into Ledger
+            SupplierLedger::create([
+                'supplier_id'      => $payment->supplier_id,
+                'transaction_date' => $payment->payment_date,
+                'voucher_no'       => $payment->voucher_number,
+                'description'      => 'Payment Sent via ' . strtoupper($payment->payment_mode),
+                'type'             => 'payment',
+                'debit'            => $payment->amount_paid, // Payment is DEBIT
+                'credit'           => 0,
+                'balance'          => $newBalance,
+                'reference_type'   => SupplierPayment::class,
+                'reference_id'     => $payment->id,
+            ]);
 
-        // 2. Naya balance calculate karo (Payment karne se udhaar kam hota hai)
-        $newBalance = $previousBalance - $payment->amount_paid;
-
-        // 3. Khate (Ledger) mein entry daal do
-        SupplierLedger::create([
-            'supplier_id' => $payment->supplier_id,
-            'transaction_date' => $payment->payment_date,
-            'description' => "Payment Sent - Voucher: {$payment->voucher_number} (" . ucfirst($payment->payment_mode) . ")",
-            'type' => 'payment',
-            'debit' => 0,
-            'credit' => $payment->amount_paid, // Humne paise de diye
-            'balance' => $newBalance,
-            'reference_type' => SupplierPayment::class, // Polymorphic relation
-            'reference_id' => $payment->id,
-        ]);
+            // 2. Update Supplier Current Balance
+            $supplier->update(['current_balance' => $newBalance]);
+        });
     }
 
     /**

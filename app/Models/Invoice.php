@@ -31,48 +31,17 @@ class Invoice extends Model
     
     protected static function booted()
     {
-        // 1. Jab NAYI invoice CREATE ho (Naya Bill Bane)
-        static::created(function ($invoice) {
-            $customer = \App\Models\Customer::find($invoice->customer_id);
-
-            if ($customer) {
-                // Is bill ka baqi udhar nikalein (Grand Total - Amount Paid)
-                $unpaidAmount = $invoice->grand_total - $invoice->amount_paid;
-
-                // Customer ke current_balance mein naya udhar jama (add) kar dein
-                $customer->increment('current_balance', $unpaidAmount);
-            }
-        });
-
-        // 2. Agar invoice DELETE ho (Soft Delete ya Force Delete)
-        static::deleted(function ($invoice) {
-            $customer = \App\Models\Customer::find($invoice->customer_id);
-
-            if ($customer) {
-                // Bill delete hone par us bill ka udhar customer ke balance se wapas minus karein
-                $unpaidAmount = $invoice->grand_total - $invoice->amount_paid;
-                $customer->decrement('current_balance', $unpaidAmount);
-            }
-        });
-
-        // 3. Agar invoice EDIT (UPDATE) ho
-        static::updated(function ($invoice) {
-            $customer = \App\Models\Customer::find($invoice->customer_id);
-
-            if ($customer) {
-                // Purana unpaid amount kya tha?
-                $oldUnpaid = $invoice->getOriginal('grand_total') - $invoice->getOriginal('amount_paid');
-                
-                // Naya unpaid amount kya hai?
-                $newUnpaid = $invoice->grand_total - $invoice->amount_paid;
-
-                // Dono ka farq nikalein
-                $difference = $newUnpaid - $oldUnpaid;
-
-                if ($difference != 0) {
-                    // Agar udhar barha to automatic plus, agar kam hua to automatic minus
-                    $customer->increment('current_balance', $difference);
+      static::saving(function ($invoice) {
+            if ($invoice->amount_paid >= $invoice->grand_total && $invoice->grand_total > 0) {
+                $invoice->status = 'paid';
+                if ($invoice->payment_mode === 'credit') {
+                    $invoice->payment_mode = 'cash'; 
                 }
+            } elseif ($invoice->amount_paid > 0 && $invoice->amount_paid < $invoice->grand_total) {
+                $invoice->status = 'partial';
+            } else {
+                $invoice->status = 'unpaid';
+                $invoice->payment_mode = 'credit';
             }
         });
     }

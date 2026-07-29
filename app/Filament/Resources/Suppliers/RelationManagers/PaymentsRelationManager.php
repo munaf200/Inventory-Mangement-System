@@ -108,87 +108,63 @@ class PaymentsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                CreateAction::make(),
+                // CreateAction::make(),
                 AssociateAction::make(),
-                CreateAction::make()
-                ->label('New supplier payment')
-                ->modalHeading('Create Supplier Payment')
-                // ->form([ ... aap ke form fields ... ]) 
-                ->using(function (array $data, string $model): Model {
-                    
-                    // DB Transaction start kar rahe hain taake koi error aaye to data save na ho
-                    return DB::transaction(function () use ($data, $model) {
-                        
-                        // 1. Payment Table mein entry create karein
-                        // Note: Agar ye RelationManager hai, to supplier_id automatically $data mein nahi hota, 
-                        // aap ko relation se uthana parh sakta hai e.g., $this->getOwnerRecord()->id. 
-                        // Hum assume kar rahe hain $data['supplier_id'] form mein hidden field ya relation se aa raha hai.
-                        $supplierId = $data['supplier_id'] ?? $this->getOwnerRecord()->id;
-                        $data['supplier_id'] = $supplierId; 
-                        
-                        $payment = $model::create($data);
-                        $paymentAmount = $data['amount_paid'];
+             CreateAction::make()
+    ->label('New supplier payment')
+    ->modalHeading('Create Supplier Payment')
+    ->using(function (array $data, string $model): Model {
+        return DB::transaction(function () use ($data, $model) {
+            
+            $supplierId = $data['supplier_id'] ?? $this->getOwnerRecord()->id;
+            $data['supplier_id'] = $supplierId; 
+            
+            // 1. Payment Create (SupplierPaymentObserver is ki apni Ledger entry banayega)
+            $payment = $model::create($data);
+            $paymentAmount = floatval($data['amount_paid']);
 
-                        // 2. Ledger Update karein
-                        $lastLedger = SupplierLedger::where('supplier_id', $supplierId)
-                                                    ->latest('id')
-                                                    ->first();
-                        
-                        $previousBalance = $lastLedger ? $lastLedger->balance : 0;
-                        
-                        // Payment di hai to baqaya (balance) kam hoga
-                        $newBalance = $previousBalance - $paymentAmount;
+            // 2. FIFO Logic - Purani Purchases ko clear karna
+            $remainingPayment = $paymentAmount;
 
-                        SupplierLedger::create([
-                            'supplier_id' => $supplierId,
-                            'transaction_date' => $data['payment_date'],
-                            'description' => 'Payment Voucher # ' . $data['voucher_number'] . ($data['notes'] ? ' - ' . $data['notes'] : ''),
-                            'type' => 'payment',
-                            'debit' => 0, 
-                            'credit' => $paymentAmount, // "Hum De Chuke"
-                            'balance' => $newBalance,
-                            'reference_type' => SupplierPayment::class,
-                            'reference_id' => $payment->id,
-                        ]);
+            $pendingPurchases = Purchase::where('supplier_id', $supplierId)
+                ->where('balance_amount', '>', 0)
+                ->orderBy('purchase_date', 'asc')
+                ->get();
 
-                        // 3. FIFO Logic - Purani Purchases ko clear karna
-                        $remainingPayment = $paymentAmount;
+            foreach ($pendingPurchases as $purchase) {
+                if ($remainingPayment <= 0) {
+                    break;
+                }
 
-                        $pendingPurchases = Purchase::where('supplier_id', $supplierId)
-                                                    ->where('balance_amount', '>', 0)
-                                                    ->orderBy('purchase_date', 'asc') // Sab se purani bill pehle
-                                                    ->get();
+                $allocateAmount = min($purchase->balance_amount, $remainingPayment);
 
-                        foreach ($pendingPurchases as $purchase) {
-                            if ($remainingPayment <= 0) {
-                                break; // Paise khatam, loop rok do
-                            }
+                // Allocation Record Create Karein
+                SupplierPaymentAllocation::create([
+                    'supplier_payment_id' => $payment->id,
+                    'purchase_id'         => $purchase->id,
+                    'amount'              => $allocateAmount,
+                ]);
 
-                            // Calculate karein ke is bill mein kitne paise lag sakte hain
-                            $allocateAmount = min($purchase->balance_amount, $remainingPayment);
+                // Naya Unpaid Balance Aur Status Calculate Karein
+                $newBalance = $purchase->balance_amount - $allocateAmount;
+                $status = ($newBalance <= 0) ? 'paid' : 'partial';
 
-                            // Pivot Table (Allocation) mein record dalen
-                            SupplierPaymentAllocation::create([
-                                'supplier_payment_id' => $payment->id,
-                                'purchase_id' => $purchase->id,
-                                'amount' => $allocateAmount,
-                            ]);
+                // FIX: 
+                // 1. amount_paid ko change nahi kia (wo original spot payment hi rahegi)
+                // 2. updateQuietly use kia taake PurchaseObserver dobara na chale
+                $purchase->updateQuietly([
+                    'balance_amount' => $newBalance,
+                    'status'         => $status,
+                ]);
 
-                            // Purchase ka balance update karein
-                            $purchase->amount_paid += $allocateAmount;
-                            $purchase->balance_amount -= $allocateAmount;
-                            $purchase->save();
+                $remainingPayment -= $allocateAmount;
+            }
 
-                            // Bachi hui payment amount update karein
-                            $remainingPayment -= $allocateAmount;
-                        }
-
-                        // Return the created payment record back to Filament
-                        return $payment;
-                    });
-                })
-                ->successNotificationTitle('Payment created & allocated successfully!'),
-            ])
+            return $payment;
+        });
+    })
+    ->successNotificationTitle('Payment created & allocated successfully!'),
+     ])
             ->recordActions([
                 EditAction::make(),
                 DissociateAction::make(),

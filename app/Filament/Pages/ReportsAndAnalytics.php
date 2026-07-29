@@ -8,11 +8,13 @@ use App\Filament\Widgets\SalesAndProfitTrendWidget;
 use App\Filament\Widgets\TopLotsWidget;
 use App\Models\Purchase;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -65,7 +67,20 @@ class ReportsAndAnalytics extends Page implements HasForms
                             'all' => 'ALL Lots',
                         ] + Purchase::pluck('lot_number', 'id')->toArray())
                         ->selectablePlaceholder(false),
-                ]),
+
+                   // Inline Action Button
+                
+                   // Button is aligned with input height
+                    Actions::make([
+                        Action::make('submit')
+                            ->label('Apply Filters')
+                            ->icon('heroicon-m-funnel')
+                            ->color('warning')
+                            ->action('submitFilters'),
+                    ])
+                    ->extraAttributes(['style' => 'margin-top: 26px; width: 100%']),
+                   // ]),
+                ])->columns(4),
             ])
             ->statePath('filterData');
     }

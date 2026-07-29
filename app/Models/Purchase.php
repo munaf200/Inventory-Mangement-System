@@ -30,4 +30,21 @@ class Purchase extends Model
     public function ledgerEntries() {
         return $this->morphMany(SupplierLedger::class, 'reference'); //
     }
+
+    protected static function booted()
+    {
+        // Status Auto-Adjustment based on amount_paid vs lot_price
+        static::saving(function ($purchase) {
+            $paid = floatval($purchase->amount_paid ?? 0);
+            $total = floatval($purchase->lot_price ?? 0);
+
+            if ($paid >= $total && $total > 0) {
+                $purchase->status = 'paid';
+            } elseif ($paid > 0) {
+                $purchase->status = 'partial';
+            } else {
+                $purchase->status = 'unpaid';
+            }
+        });
+    }
 }

@@ -36,6 +36,7 @@ class SupplierForm
                             ->suffixAction(
                                 Action::make('toggleEdit')
                                     ->icon('heroicon-m-pencil-square')
+                                    ->visible(fn ($operation) => $operation === 'edit')
                                     ->action(function (Get $get, Set $set) {
                                         // Pencil pe click par true/false switch hoga
                                         $set('is_editing', ! $get('is_editing'));
@@ -49,7 +50,7 @@ class SupplierForm
                             ->columnSpan(1),
                          // 1. Placeholder ka naam 'current_balance_display' kar diya
                         Placeholder::make('current_balance_display')
-                            ->label("Current Balance")
+                            ->label("Payable Balance")
                             ->visible(fn($record) => $record !== null)
                             ->content(function ($record) {
                                 $balance = (float) $record->current_balance;
@@ -75,7 +76,8 @@ class SupplierForm
                             ->numeric()
                             ->default(0.00)
                             ->prefix('Rs.')
-                            ->visible(fn(Get $get) => $get('is_editing'))
+                            // ->visible(fn(Get $get) => $get('is_editing'))
+                            ->visible(fn (string $operation, Get $get) => $operation === 'create' || $get('is_editing'))
                             // ->helperText('Agar aapne pehle se inke paise dene hain toh yahan likhein.')
                             ->columnSpanFull()
                             ->live(onBlur: true) // Type karne ke baad trigger kare ga (performance ke liye behtar hai)
@@ -96,7 +98,7 @@ class SupplierForm
                             ->label('Extra Notes / Remarks')
                             ->maxLength(65535)
                             ->columnSpanFull()
-                            ->visible(fn(Get $get) => $get('is_editing')),
+                            ->visible(fn (string $operation, Get $get) => $operation === 'create' || $get('is_editing')),
                     ])->columns(3)->columnSpanFull(),
             ]);
     }

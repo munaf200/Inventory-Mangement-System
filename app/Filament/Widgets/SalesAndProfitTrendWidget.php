@@ -42,33 +42,36 @@ class SalesAndProfitTrendWidget extends ChartWidget
      */
     protected function getData(): array
     {
-        $fromDate = $this->filters['from_date'] ?? now()->subDays(30)->format('Y-m-d');
+      $fromDate = $this->filters['from_date'] ?? now()->subDays(30)->format('Y-m-d');
         $toDate = $this->filters['to_date'] ?? now()->format('Y-m-d');
         $lotId = $this->filters['purchase_lot_id'] ?? 'all';
 
-        // Core Query: invoice items ko join kar ke sales aur profit calculate karna
+        // FIX 1: Full Day Range set ki hai (Start & End Time)
+        $start = $fromDate . ' 00:00:00';
+        $end = $toDate . ' 23:59:59';
+
         $query = DB::table('invoice_items')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->join('lot_items', 'invoice_items.lot_item_id', '=', 'lot_items.id')
-            ->whereBetween('invoices.invoice_date', [$fromDate, $toDate]);
+            ->whereNull('invoices.deleted_at')   // FIX 2: Soft deleted invoices filter kiye
+            ->whereNull('lot_items.deleted_at')  // Soft deleted lot items filter kiye
+            ->whereBetween('invoices.invoice_date', [$start, $end]);
 
-        // AGAR SPECIFIC LOT SELECT HAI TO FILTER LAGANA
         if ($lotId !== 'all') {
             $query->where('lot_items.purchase_id', $lotId);
         }
 
-        // Grouping data daily wise (kis din kitni sale aur profit hui)
+        // FIX 3: DATE() function apply kia taake exact daily wise grouping bane
         $trendData = $query->select(
-            'invoices.invoice_date',
+            DB::raw('DATE(invoices.invoice_date) as formatted_date'),
             DB::raw('SUM(invoice_items.qty * invoice_items.rate) as total_sales'),
             DB::raw('SUM(invoice_items.qty * invoice_items.rate) - SUM(invoice_items.qty * lot_items.cost_price) as net_profit')
         )
-        ->groupBy('invoices.invoice_date')
-        ->orderBy('invoices.invoice_date', 'asc')
+        ->groupBy(DB::raw('DATE(invoices.invoice_date)'))
+        ->orderBy(DB::raw('DATE(invoices.invoice_date)'), 'asc')
         ->get();
 
-        // Arrays prepare karna Chart JS ke liye
-        $labels = $trendData->pluck('invoice_date')->toArray();
+        $labels = $trendData->pluck('formatted_date')->toArray();
         $sales = $trendData->pluck('total_sales')->map(fn ($val) => (float) $val)->toArray();
         $profit = $trendData->pluck('net_profit')->map(fn ($val) => (float) $val)->toArray();
 
@@ -77,15 +80,15 @@ class SalesAndProfitTrendWidget extends ChartWidget
                 [
                     'label' => 'Total Sales (PKR)',
                     'data' => $sales,
-                    'borderColor' => '#3B82F6', // Modern Blue color
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)', // Light blue shade under line
+                    'borderColor' => '#3B82F6', 
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)', 
                     'fill' => true,
                 ],
                 [
                     'label' => 'Net Profit (PKR)',
                     'data' => $profit,
-                    'borderColor' => '#10B981', // Emerald/Green color
-                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)', // Light green shade under line
+                    'borderColor' => '#10B981', 
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)', 
                     'fill' => true,
                 ],
             ],

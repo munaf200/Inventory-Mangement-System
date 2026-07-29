@@ -13,14 +13,24 @@ return new class extends Migration
     {
         Schema::create('supplier_ledgers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('supplier_id')->constrained()->cascadeOnDelete(); //
-            $table->date('transaction_date'); //
-            $table->string('description'); //
-            $table->enum('type', ['opening_balance', 'purchase', 'payment']); //
-            $table->decimal('debit', 12, 2)->default(0); //
-            $table->decimal('credit', 12, 2)->default(0); //
-            $table->decimal('balance', 12, 2); //
-            $table->nullableMorphs('reference'); //
+            $table->foreignId('supplier_id')->constrained()->cascadeOnDelete();
+            $table->date('transaction_date');
+            $table->string('voucher_no')->nullable(); // Invoice # or Payment Voucher #
+            $table->string('description');
+            $table->enum('type', ['opening_balance', 'purchase', 'payment', 'purchase_return']);
+            
+            // Debit = Payment Given / Udhaar Kam Hua (-)
+            $table->decimal('debit', 12, 2)->default(0); 
+            
+            // Credit = Bill / Udhaar Barha (+)
+            $table->decimal('credit', 12, 2)->default(0); 
+            
+            // Running balance after this transaction
+            $table->decimal('balance', 12, 2); 
+            
+            // Polymorphic link to Purchases or SupplierPayments
+            $table->nullableMorphs('reference'); 
+            
             $table->timestamps();
         });
     }

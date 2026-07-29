@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class RecentInvoices extends TableWidget
 {
-    protected static ?string $heading = 'Recent Invoices';
+    protected static ?string $heading = 'Last 5 Invoices';
     
     // Dashboard par iski position set karne ke liye
     protected static ?int $sort = 5; 
@@ -23,18 +23,18 @@ class RecentInvoices extends TableWidget
     public function table(Table $table): Table
     {
         return $table
-            ->query(Invoice::query()->latest())
+            ->query(Invoice::query()->latest()->limit(5))
             ->columns([
                 TextColumn::make('invoice_number')
                     ->label('Invoice #')
-                    ->searchable()
+                    // ->searchable()
                     ->sortable()
                     ->weight('bold'),
 
                 // Customer relation ke through naam dikhana (Ensure Invoice model mein customer() ka relation bana ho)
                 TextColumn::make('customer.name')
-                    ->label('Customer Name')
-                    ->searchable(),
+                    ->label('Customer Name'),
+                    // ->searchable(),
 
                 // Amount yaani grand total dikhane ke liye
                 TextColumn::make('grand_total')
@@ -53,7 +53,7 @@ class RecentInvoices extends TableWidget
                     ]),
 
                
-            ])->paginated([5, 10])
+            ])->paginated(false)
             ->filters([
                 //
             ])

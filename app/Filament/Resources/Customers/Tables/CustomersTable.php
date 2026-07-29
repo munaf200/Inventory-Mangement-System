@@ -27,7 +27,7 @@ class CustomersTable
                     ->label('Phone')
                     ->searchable(),
 
-                TextColumn::make('opening_balance')
+                TextColumn::make('current_balance')
                     ->label('Opening Balance')
                     ->numeric(2)
                     ->money('PKR')

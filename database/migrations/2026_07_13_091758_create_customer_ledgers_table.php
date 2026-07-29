@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('customer_ledgers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('customer_id')->constrained()->cascadeOnDelete(); //
+            $table->string('voucher_no')->nullable();
             $table->date('transaction_date'); //
             $table->string('description'); //
             $table->enum('type', ['opening_balance', 'invoice', 'payment']); //

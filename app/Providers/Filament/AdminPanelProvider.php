@@ -40,14 +40,7 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
                 // Dashboard::navigationIcon(Heroicon::Home),
             ])
-            // ->navigationItems(
-            //     [
-            //            NavigationItem::make('Dashboard')
-            // ->icon(Heroicon::Home) 
-            // ->url(fn (): string => route('filament.admin.pages.admin'))
-            // ->sort(-2),
-            //     ]
-            // )
+            ->spa()
             
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([

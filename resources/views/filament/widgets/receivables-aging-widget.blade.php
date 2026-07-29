@@ -154,7 +154,7 @@
                                     @foreach($data['danger']['items'] as $item)
                                         <tr>
                                             <td style="font-weight: 700; color: #1e293b;">{{ $item['customer'] }}</td>
-                                            <td style="color: #64748b;">#{{ $item['invoice_no'] }} <span style="font-size: 11px; color: #94a3b8;">({{ $item['days'] }} days ago)</span></td>
+                                            <td style="color: #64748b;">#{{ $item['invoice_no'] }} <span style="font-size: 11px; color: #94a3b8;">({{ (int) abs($item['days']) }} days ago)</span></td>
                                             <td style="text-align: right; font-weight: 700; color: #dc2626;">PKR {{ number_format($item['amount'], 2) }}</td>
                                         </tr>
                                     @endforeach

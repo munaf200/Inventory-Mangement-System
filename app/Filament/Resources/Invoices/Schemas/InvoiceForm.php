@@ -281,23 +281,42 @@ class InvoiceForm
                             ->readonly()
                             ->prefix('Rs.'),
 
-                        TextInput::make('amount_paid')
-                            ->label('Paid Amount')
-                            ->numeric()
-                            ->prefix('Rs.')
-                            ->default(0)
-                            ->live(onBlur: true)
-                            ->visible(fn(Get $get) => in_array($get('payment_mode'), ['cash', 'bank'])) // Conditional Visibility
-                            ->afterStateUpdated(function (Get $get, Set $set) {
-                                $total = floatval($get('lot_price') ?? 0);
-                                $paid = floatval($get('amount_paid') ?? 0);
+                        // TextInput::make('amount_paid')
+                        //     ->label('Paid Amount')
+                        //     ->numeric()
+                        //     ->prefix('Rs.')
+                        //     ->default(0)
+                        //     ->live(onBlur: true)
+                        //     ->visible(fn(Get $get) => in_array($get('payment_mode'), ['cash', 'bank'])) // Conditional Visibility
+                        //     ->afterStateUpdated(function (Get $get, Set $set) {
+                        //         $total = floatval($get('lot_price') ?? 0);
+                        //         $paid = floatval($get('amount_paid') ?? 0);
 
-                                // Remaining Balance ko real-time update karega
-                                $set('balance_amount', $total - $paid);
-                            })
-                            ->required(fn(Get $get) => $get('payment_mode') === 'cash' || $get('payment_mode') === 'bank'),
+                        //         // Remaining Balance ko real-time update karega
+                        //         $set('balance_amount', $total - $paid);
+                        //     })
+                        //     ->required(fn(Get $get) => $get('payment_mode') === 'cash' || $get('payment_mode') === 'bank'),
                         // ->required(fn(Get $get) => $get('payment_mode') === 'bank'),
 
+                        TextInput::make('amount_paid')
+    ->label('Paid Amount')
+    ->numeric()
+    ->prefix('Rs.')
+    ->default(0)
+    ->live(onBlur: true)
+    ->visible(fn(Get $get) => in_array($get('payment_mode'), ['cash', 'bank']))
+    ->afterStateUpdated(function (Get $get, Set $set, $state) {
+        $grandTotal = floatval($get('grand_total') ?? 0);
+        $paid = floatval($state ?? 0);
+
+        // Auto Status Adjustment
+        if ($paid >= $grandTotal && $grandTotal > 0) {
+            $set('status', 'paid');
+        } elseif ($paid > 0) {
+            $set('status', 'partial');
+        }
+    })
+    ->required(fn(Get $get) => in_array($get('payment_mode'), ['cash', 'bank'])),
                         TextInput::make('ref_no')
                             ->label('Reference Number')
                             ->visible(fn(Get $get) => $get('payment_mode') === 'bank') // Conditional Visibility

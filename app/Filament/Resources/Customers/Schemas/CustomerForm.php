@@ -27,6 +27,7 @@ class CustomerForm
                         Hidden::make('is_editing')
                             ->default(false)
                             ->live()
+                            ->visible(fn (string $operation, Get $get) => $operation === 'create' || $get('is_editing'))
                             ->dehydrated(false),
 
 
@@ -35,17 +36,28 @@ class CustomerForm
                         //     ->required()
                         //     ->maxLength(255)
                         //     ->columnSpan(1),
+                        // TextInput::make('name')
+                        //     ->label('Customer / Shop Name')
+                        //     ->required()
+                        //     ->suffixAction(
+                        //         Action::make('toggleEdit')
+                        //             ->icon('heroicon-m-pencil-square')
+                        //             ->action(function (Get $get, Set $set) {
+                        //                 // Pencil pe click par true/false switch hoga
+                        //                 $set('is_editing', ! $get('is_editing'));
+                        //             })
+                        //     ),
                         TextInput::make('name')
-                            ->label('Customer / Shop Name')
-                            ->required()
-                            ->suffixAction(
-                                Action::make('toggleEdit')
-                                    ->icon('heroicon-m-pencil-square')
-                                    ->action(function (Get $get, Set $set) {
-                                        // Pencil pe click par true/false switch hoga
-                                        $set('is_editing', ! $get('is_editing'));
-                                    })
-                            ),
+    ->label('Customer / Shop Name')
+    ->required()
+    ->suffixAction(
+        Action::make('toggleEdit')
+            ->icon('heroicon-m-pencil-square')
+            ->visible(fn ($operation) => $operation === 'edit') // <-- YES LINE ADD KAREIN
+            ->action(function (Get $get, Set $set) {
+                $set('is_editing', ! $get('is_editing'));
+            })
+    ),
 
                         TextInput::make('phone')
                             ->label('Phone Number')
@@ -54,7 +66,7 @@ class CustomerForm
                             ->columnSpan(1),
                             
                         Placeholder::make('current_balance')
-                            ->label("Current Balance")
+                            ->label("Receivable Balance")
                             // Sirf edit form me show hoga jahan record mojood ho
                             ->visible(fn($record) => $record !== null)
                             ->content(function ($record) {
@@ -85,10 +97,12 @@ class CustomerForm
                             ->visible(fn(Get $get) => $get('is_editing'))
                             ->default(0.00)
                             ->prefix('Rs.')
+                            ->visible(fn (string $operation, Get $get) => $operation === 'create' || $get('is_editing'))
                             // ->helperText('Agar is customer ne pehle se aapke paise dene hain toh yahan likhein.')
-                            ->columnSpanFull()
-                            ->dehydrated()
-                            ->readOnly(),
+                            ->columnSpanFull(),
+                            
+                            // ->dehydrated()
+                            // ->readOnly(),
 
                         // Placeholder::make('current_balance'),
 
@@ -113,6 +127,7 @@ class CustomerForm
                         Textarea::make('notes')
                             ->label('Extra Notes / Remarks')
                             ->visible(fn(Get $get) => $get('is_editing'))
+                            ->visible(fn (string $operation, Get $get) => $operation === 'create' || $get('is_editing'))
                             ->columnSpanFull(),
                     ])->columns(3)->columnSpanFull(),
             ]);

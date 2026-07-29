@@ -18,6 +18,10 @@ class InvoiceItem extends Model
         return $this->belongsTo(LotItem::class); //
     }
 
+    public function lot() {
+        return $this->belongsTo(Purchase::class, 'lot_id');
+    }
+
     protected static function booted()
     {
         // 1. Jab naya item invoice mein save ho, to stock MINUS karein
