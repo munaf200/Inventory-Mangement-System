@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Purchases\Tables;
 
+use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -43,16 +45,40 @@ class PurchasesTable
                     ->sortable(),
             ])
             ->filters([
-                TrashedFilter::make(),
+                // TrashedFilter::make(),
             ])
             ->recordActions([
                 EditAction::make(),
+                Action::make('downloadPdf')
+    ->label('Download PDF')
+    ->icon('heroicon-o-arrow-down-tray')
+    ->action(function ($record) {
+        // Corrected eager loading: Purchase has direct relationship with Supplier & LotItems
+        $pdf = Pdf::loadView('pdf.purchase', [
+            'record'   => $record->load(['supplier', 'lotItems']),
+            'currency' => 'PKR ',
+            'company'  => [
+                'name'         => 'Haroon and Sons',
+                'tagline'      => 'Wholesale Traders',
+                'signature'    => 'Zeeshan',
+                'account_name' => 'Haroon and Sons',
+                'bank'         => 'Meezan Bank',
+                'account_no'   => '0123 4567 8901',
+            ],
+        ])->setPaper('a4');
+
+        // Changed invoice_number to lot_number to match migration
+        return response()->streamDownload(
+            fn () => print($pdf->output()),
+            "purchase-{$record->lot_number}.pdf"
+        );
+    })
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
+                    // DeleteBulkAction::make(),
+                    // ForceDeleteBulkAction::make(),
+                    // RestoreBulkAction::make(),
                 ]),
             ]);
     }

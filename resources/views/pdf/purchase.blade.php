@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Invoice #{{ $record->invoice_number }}</title>
+    <title>Purchase #{{ $record->lot_number }}</title>
     <style>
         @page { size: A4; margin: 8mm; }
         * { box-sizing: border-box; }
@@ -130,8 +130,8 @@
     <table class="top-header">
         <tr>
             <td>
-                <div class="main-title">INVOICE</div>
-                <div class="main-subtitle">{{ $record->invoice_type ?? 'Sales Invoice' }}</div>
+                <div class="main-title">PURCHASE</div>
+                <div class="main-subtitle">{{ $record->invoice_type ?? 'Purchase Invoice' }}</div>
             </td>
             <td class="company-logo-text">
                 {{-- <div class="logo-circle">{{ Str::substr($company['name'] ?? 'Haroon and Sons', 0, 1) }}.</div> --}}
@@ -149,22 +149,22 @@
     <table class="meta-section">
         <tr>
             <td style="width: 50%;">
-                <div class="section-label">ISSUED TO</div>
+                <div class="section-label">SUPPLIER</div>
                 <div class="meta-text">
-                    <strong>{{ $record->customer->name ?? 'Customer Name' }}</strong><br>
-                    @if(!empty($record->customer->company_name)) {{ $record->customer->company_name }}<br> @endif
-                    @if(!empty($record->customer->address)) {{ $record->customer->address }} @endif
+                    <strong>{{ $record->supplier->name ?? 'Customer Name' }}</strong><br>
+                    @if(!empty($record->supplier->phone)) {{ $record->supplier->phone }}<br> @endif
+                    @if(!empty($record->supplier->address)) {{ $record->supplier->address }} @endif
                 </div>
             </td>
             <td style="width: 50%;">
                 <table class="meta-info-table">
                     <tr>
-                        <td class="label">INVOICE NO:</td>
-                        <td class="value">{{ $record->invoice_number }}</td>
+                        <td class="label">LOT NO:</td>
+                        <td class="value">{{ $record->lot_number }}</td>
                     </tr>
                     <tr>
                         <td class="label">DATE:</td>
-                        <td class="value">{{ \Carbon\Carbon::parse($record->invoice_date)->format('d.m.Y') }}</td>
+                        <td class="value">{{ \Carbon\Carbon::parse($record->purchase_date)->format('d.m.Y') }}</td>
                     </tr>
                     @if(!empty($record->due_date))
                     <tr>
@@ -172,10 +172,10 @@
                         <td class="value">{{ \Carbon\Carbon::parse($record->due_date)->format('d.m.Y') }}</td>
                     </tr>
                     @endif
-                    <tr>
+                    {{-- <tr>
                         <td class="label">PAYMENT MODE:</td>
                         <td class="value">{{ strtoupper($record->payment_mode ?? 'Bank Transfer') }}</td>
-                    </tr>
+                    </tr> --}}
                 </table>
             </td>
         </tr>
@@ -185,23 +185,23 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 10%;">LOT NO.</th>
+                {{-- <th style="width: 10%;">LOT NO.</th> --}}
                 <th style="width: 28%;">ITEM DESCRIPTION</th>
                 <th style="width: 16%;">BRAND</th>
-                <th style="width: 14%;" class="text-center">RATE</th>
+                {{-- <th style="width: 14%;" class="text-center">RATE</th> --}}
                 <th style="width: 10%;" class="text-center">QTY</th>
                 <th style="width: 22%;" class="text-right">TOTAL</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($record->items as $item)
+            @foreach($record->lotItems as $item)
                 <tr>
-                    <td class="lot-no" style="width: 14%;">{{ $item->lot->lot_number ?? $item->lot_id ?? '—' }}</td>
-                    <td class="item-desc" style="width: 20%;">{{ $item->lotItem->item ?? $item->name ?? 'Item' }}</td>
-                    <td>{{ $item->lotItem->brand ?? '—' }}</td>
-                    <td class="text-center">{{ number_format($item->rate, 0) }}</td>
-                    <td class="text-center">{{ $item->qty }}</td>
-                    <td class="text-right">{{ $currency ?? '$' }}{{ number_format($item->total, 0) }}</td>
+                    {{-- <td class="lot-no" style="width: 14%;">{{ $item->lot->lot_number ?? $item->lot_id ?? '—' }}</td> --}}
+                    <td class="item-desc" style="width: 20%;">{{ $item->item ?? $item->name ?? 'Item' }}</td>
+                    <td>{{ $item->brand ?? '—' }}</td>
+                    {{-- <td class="text-center">{{ number_format($item->cost_price, 0) }}</td> --}}
+                    <td class="text-center">{{ $item->qty_purchased }}</td>
+                    <td class="text-right">{{ $currency ?? 'PKR' }}{{ number_format($item->cost_price, 0) }}</td>
                 </tr>
             @endforeach
            
@@ -215,7 +215,7 @@
             <table class="totals-table" style="width: 100%; float: none;">
                 <tr>
                     <td class="label">SUBTOTAL</td>
-                    <td class="value">{{ $currency ?? '$' }}{{ number_format($record->sub_total ?? $record->items->sum('total'), 0) }}</td>
+                    <td class="value">{{ $currency ?? '$' }}{{ number_format($record->lot_price ?? $record->items->sum('total'), 0) }}</td>
                 </tr>
                 @if($record->discount > 0)
                 <tr>
@@ -229,10 +229,10 @@
                     <td class="value">{{ $currency ?? '$' }}{{ number_format($record->tax_amount ?? ($record->sub_total * $record->tax_rate / 100), 0) }}</td>
                 </tr>
                 @endif
-                <tr class="grand-total-row">
+                {{-- <tr class="grand-total-row">
                     <td class="label">TOTAL</td>
                     <td class="value">{{ $currency ?? '$' }}{{ number_format($record->grand_total ?? $record->items->sum('total'), 0) }}</td>
-                </tr>
+                </tr> --}}
                 {{-- @if($record->amount_paid > 0) --}}
                 <tr>
                     <td class="label">PAID</td>
@@ -240,7 +240,7 @@
                 </tr>
                 <tr>
                     <td class="label">BALANCE DUE</td>
-                    <td class="value">{{ $currency ?? '$' }}{{ number_format($record->grand_total - $record->amount_paid, 0) }}</td>
+                    <td class="value">{{ $currency ?? '$' }}{{ number_format($record->balance_amount, 0) }}</td>
                 </tr>
                 {{-- @endif --}}
             </table>

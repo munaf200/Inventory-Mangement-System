@@ -70,9 +70,9 @@ class InvoicesTable
             'company'  => [
                 'name'         => 'Haroon and Sons',
                 'tagline'      => 'Wholesale Traders',
-                'signature'    => 'Haroon',
+                'signature'    => 'Zeeshan',
                 'account_name' => 'Haroon and Sons',
-                'bank'         => 'Borcele Bank',
+                'bank'         => 'Meezan Bank',
                 'account_no'   => '0123 4567 8901',
             ],
         ])->setPaper('a4');
@@ -86,7 +86,7 @@ class InvoicesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     
-                    DeleteBulkAction::make(),
+                    // DeleteBulkAction::make(),
                     
                     
                 ]),

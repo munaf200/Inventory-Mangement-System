@@ -27,8 +27,8 @@ class SuppliersTable
                     ->label('Phone')
                     ->searchable(),
 
-                TextColumn::make('opening_balance')
-                    ->label('Opening Balance')
+                TextColumn::make('current_balance')
+                    ->label('Payable Balance')
                     ->numeric(2)
                     ->money('PKR')
                     ->sortable()

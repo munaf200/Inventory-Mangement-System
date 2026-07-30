@@ -28,7 +28,7 @@ class CustomersTable
                     ->searchable(),
 
                 TextColumn::make('current_balance')
-                    ->label('Opening Balance')
+                    ->label('Recievable Balance')
                     ->numeric(2)
                     ->money('PKR')
                     ->sortable()
